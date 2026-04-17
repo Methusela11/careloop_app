@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-          color: Color.fromARGB(255, 3, 121, 66),
+          color: Color.fromARGB(255, 1, 133, 29),
         ),
         child: Stack(
           children: [
@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 250,
                 height: 250,
                 decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 196, 118, 2),
+                  color: Color.fromARGB(255, 246, 139, 0),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 180,
                 height: 180,
                 decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 196, 118, 2),
+                  color: Color.fromARGB(255, 246, 139, 0),
                   shape: BoxShape.circle,
                 ),
               ),

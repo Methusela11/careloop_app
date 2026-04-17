@@ -40,10 +40,9 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor:
-          const Color.fromARGB(255, 1, 133, 29), // Same deep green as login screen
+          const Color.fromARGB(255, 1, 133, 29),
       body: Stack(
         children: [
-          // 🔶 Yellow background shape (top-right feel) - Same as login
           Positioned(
             top: -80,
             right: -80,
@@ -57,7 +56,6 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
           ),
 
-          // 🔶 Bottom yellow accent - Same as login
           Positioned(
             bottom: -60,
             left: -40,
@@ -79,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius:
-                    BorderRadius.circular(28), // Matching login border radius
+                    BorderRadius.circular(28),
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black26,
