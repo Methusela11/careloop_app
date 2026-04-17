@@ -39,173 +39,251 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 188, 192, 190),
-      body: Center(
-        child: Container(
-          width: 320,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+      backgroundColor:
+          const Color.fromARGB(255, 1, 133, 29), // Same deep green as login screen
+      body: Stack(
+        children: [
+          // 🔶 Yellow background shape (top-right feel) - Same as login
+          Positioned(
+            top: -80,
+            right: -80,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: const BoxDecoration(
+                color: Color.fromARGB(255, 246, 139, 0),
+                shape: BoxShape.circle,
               ),
-            ],
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // LOGO IMAGE
-              Container(
-                height: 80,
-                width: 80,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.asset(
-                    'assets/images/logo/careloop-t.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
+
+          // 🔶 Bottom yellow accent - Same as login
+          Positioned(
+            bottom: -60,
+            left: -40,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: const BoxDecoration(
+                color: Color.fromARGB(255, 246, 139, 0),
+                shape: BoxShape.circle,
               ),
+            ),
+          ),
 
-              const SizedBox(height: 20),
+          // Center content
+          Center(
+            child: Container(
+              width: 320,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.circular(28), // Matching login border radius
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                  )
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // LOGO IMAGE
+                  Container(
+                    height: 80,
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(255, 252, 252, 251).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        'assets/images/logo/careloop-t.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.health_and_safety,
+                            size: 40,
+                            color: Color.fromARGB(255, 246, 139, 0),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
 
-              // HORIZONTAL SCROLLABLE CAROUSEL WITH IMAGES
-              SizedBox(
-                height: 240,
-                child: PageView.builder(
-                  controller: _pageController,
-                  scrollDirection: Axis.horizontal,
-                  itemCount: carouselItems.length,
-                  physics: const BouncingScrollPhysics(),
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentPage = index;
-                    });
-                  },
-                  itemBuilder: (context, index) {
-                    final item = carouselItems[index];
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.grey[100]!,
-                          width: 1,
+                  const SizedBox(height: 20),
+
+                  // App Title
+                  const Text(
+                    "CareLoop",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F3D2E),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // HORIZONTAL SCROLLABLE CAROUSEL WITH IMAGES
+                  SizedBox(
+                    height: 240,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      scrollDirection: Axis.horizontal,
+                      itemCount: carouselItems.length,
+                      physics: const BouncingScrollPhysics(),
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentPage = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final item = carouselItems[index];
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.grey[200]!,
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Image for each statement with error handling
+                              Container(
+                                height: 100,
+                                width: 130,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color:
+                                      const Color.fromARGB(255, 243, 243, 243).withOpacity(0.1),
+                                ),
+                                child: Image.asset(
+                                  item.imagePath,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      item.icon,
+                                      size: 50,
+                                      color: const Color(0xFFF6B400),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // Statement text
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  item.title,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  item.subtitle,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // DOT INDICATORS (updates with scroll)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      carouselItems.length,
+                      (index) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: _currentPage == index ? 20 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: _currentPage == index
+                              ? const Color.fromARGB(255, 246, 139, 0)
+                              : Colors.grey[300],
                         ),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Image for each statement
-                          Container(
-                            height: 100,
-                            width: 130,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              image: DecorationImage(
-                                image: AssetImage(item.imagePath),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Statement text
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              item.title,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              item.subtitle,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey,
-                              ),
-                            ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // BUTTON (arrow)
+                  GestureDetector(
+                    onTap: () {
+                      _timer.cancel(); // Stop timer when navigating
+                      Navigator.pushReplacementNamed(context, "/login");
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color.fromARGB(255, 246, 148, 0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color.fromARGB(255, 246, 131, 0).withOpacity(0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // DOT INDICATORS (now updates with scroll)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  carouselItems.length,
-                  (index) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _currentPage == index ? 20 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      color: _currentPage == index
-                          ? const Color.fromARGB(255, 230, 101, 15)
-                          : Colors.grey[300],
+                      child: const Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-
-              const SizedBox(height: 24),
-
-              // BUTTON (arrow)
-              GestureDetector(
-                onTap: () {
-                  _timer.cancel(); // Stop timer when navigating
-                  Navigator.pushReplacementNamed(context, "/login");
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color.fromARGB(255, 230, 101, 15),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-// Model for carousel items with images
+// Model for carousel items with images and fallback icons
 class CarouselItem {
   final String title;
   final String subtitle;
   final String imagePath;
+  final IconData icon; // Fallback icon in case image fails to load
 
   CarouselItem({
     required this.title,
     required this.subtitle,
     required this.imagePath,
+    required this.icon,
   });
 }
 
@@ -215,15 +293,18 @@ final List<CarouselItem> carouselItems = [
     title: "Stay Connected",
     subtitle: "Keep in touch with your loved ones in real-time",
     imagePath: 'assets/images/connected.png',
+    icon: Icons.connected_tv,
   ),
   CarouselItem(
     title: "Stay Safe",
     subtitle: "Emergency alerts and location sharing for peace of mind",
     imagePath: 'assets/images/safe.png',
+    icon: Icons.security,
   ),
   CarouselItem(
     title: "24/7 Support",
     subtitle: "Round-the-clock assistance whenever you need it",
     imagePath: 'assets/images/support.png',
+    icon: Icons.support_agent,
   ),
 ];
