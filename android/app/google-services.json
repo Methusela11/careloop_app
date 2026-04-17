@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "699217146546",
+    "project_id": "careloop-8e874",
+    "storage_bucket": "careloop-8e874.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:699217146546:android:68ec0f80e1373bea590fab",
+        "android_client_info": {
+          "package_name": "com.example.careloop_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLVdzjhGw4Y4uosH1ZUP1NIDLxBECdbqQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
