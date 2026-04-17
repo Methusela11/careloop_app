@@ -16,8 +16,31 @@ class _ElderlyHomeState extends State<ElderlyHome> {
   List<Map<String, dynamic>> caregivers = [];
   bool isLoading = false;
 
-  void sendCheckIn() {
-    print("Check-in sent!");
+  void sendCheckIn() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // get caregiver connection
+    QuerySnapshot conn = await FirebaseFirestore.instance
+        .collection("connections")
+        .where("elderlyId", isEqualTo: user.uid)
+        .where("status", isEqualTo: "accepted")
+        .get();
+
+    if (conn.docs.isEmpty) return;
+
+    String caregiverId = conn.docs.first["caregiverId"];
+
+    await FirebaseFirestore.instance.collection("checkins").add({
+      "elderlyId": user.uid,
+      "caregiverId": caregiverId,
+      "status": "ok",
+      "timestamp": FieldValue.serverTimestamp(),
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Check-in sent ✅")),
+    );
   }
 
   // 🔍 SEARCH CAREGIVERS (FINAL VERSION)

@@ -11,12 +11,8 @@ class CaregiverHome extends StatefulWidget {
 
 class _CaregiverHomeState extends State<CaregiverHome> {
   final ConnectionService _connectionService = ConnectionService();
-
-  String lastCheckIn = "No check-ins yet";
-
   final user = FirebaseAuth.instance.currentUser;
 
-  // ✅ ACCEPT REQUEST
   void acceptRequest(String connectionId) async {
     await _connectionService.acceptRequest(connectionId);
 
@@ -41,43 +37,16 @@ class _CaregiverHomeState extends State<CaregiverHome> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ❤️ CHECK-IN SIMULATION (you can replace later with real alerts)
+            // 📩 REQUESTS SECTION
             Text(
-              "Last Check-In:",
-              style: TextStyle(fontSize: 18),
-            ),
-
-            SizedBox(height: 10),
-
-            Text(
-              lastCheckIn,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-
-            SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  lastCheckIn = "Received just now ✅";
-                });
-              },
-              child: Text("Simulate Check-In"),
-            ),
-
-            SizedBox(height: 30),
-
-            Divider(),
-
-            // 📩 PENDING REQUESTS
-            Text(
-              "Incoming Requests",
+              "Elderly Requests",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
 
             SizedBox(height: 10),
 
             Expanded(
+              flex: 2,
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection("connections")
@@ -100,19 +69,99 @@ class _CaregiverHomeState extends State<CaregiverHome> {
                     itemBuilder: (context, index) {
                       final data = docs[index];
                       final connectionId = docs[index].id;
+                      final elderlyId = data["elderlyId"];
 
-                      return Card(
-                        child: ListTile(
-                          leading: Icon(Icons.person),
-                          title: Text("Elderly Request"),
-                          subtitle: Text("Waiting for approval"),
-                          trailing: ElevatedButton(
-                            onPressed: () {
-                              acceptRequest(connectionId);
-                            },
-                            child: Text("Accept"),
-                          ),
-                        ),
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection("users")
+                            .doc(elderlyId)
+                            .get(),
+                        builder: (context, userSnap) {
+                          if (!userSnap.hasData) {
+                            return ListTile(title: Text("Loading..."));
+                          }
+
+                          final userData =
+                              userSnap.data!.data() as Map<String, dynamic>;
+
+                          return Card(
+                            child: ListTile(
+                              leading: Icon(Icons.person),
+                              title: Text(userData["fullName"] ?? "Unknown"),
+                              subtitle: Text("@${userData["username"]}"),
+                              trailing: ElevatedButton(
+                                onPressed: () => acceptRequest(connectionId),
+                                child: Text("Accept"),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+
+            Divider(),
+
+            // ❤️ LIVE CHECK-INS
+            Text(
+              "Live Check-ins",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            SizedBox(height: 10),
+
+            Expanded(
+              flex: 3,
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection("checkins")
+                    .where("caregiverId", isEqualTo: user!.uid)
+                    .orderBy("timestamp", descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  final docs = snapshot.data!.docs;
+
+                  if (docs.isEmpty) {
+                    return Center(child: Text("No check-ins yet"));
+                  }
+
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final data = docs[index];
+                      final elderlyId = data["elderlyId"];
+
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection("users")
+                            .doc(elderlyId)
+                            .get(),
+                        builder: (context, userSnap) {
+                          if (!userSnap.hasData) {
+                            return ListTile(title: Text("Loading..."));
+                          }
+
+                          final userData =
+                              userSnap.data!.data() as Map<String, dynamic>;
+
+                          return Card(
+                            child: ListTile(
+                              leading:
+                                  Icon(Icons.favorite, color: Colors.green),
+                              title: Text(userData["fullName"] ?? "Unknown"),
+                              subtitle: Text(
+                                "${data["status"]} • ${data["timestamp"] ?? ""}",
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   );
