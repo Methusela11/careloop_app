@@ -20,7 +20,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     print("Check-in sent!");
   }
 
-  // 🔍 SEARCH CAREGIVERS
+  // 🔍 SEARCH CAREGIVERS (FINAL VERSION)
   void searchCaregivers() async {
     setState(() => isLoading = true);
 
@@ -32,15 +32,26 @@ class _ElderlyHomeState extends State<ElderlyHome> {
           .where("role", isEqualTo: "caregiver")
           .get();
 
-      caregivers = snapshot.docs
-          .where((doc) {
-            String username = (doc["username"] ?? "").toString().toLowerCase();
-            String email = (doc["email"] ?? "").toString().toLowerCase();
+      caregivers = snapshot.docs.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
 
-            return username.contains(query) || email.contains(query);
-          })
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList();
+        String username = (data["username"] ?? "").toString().toLowerCase();
+        String fullName = (data["fullName"] ?? "").toString().toLowerCase();
+        String email = (data["email"] ?? "").toString().toLowerCase();
+
+        return username.contains(query) ||
+            fullName.contains(query) ||
+            email.contains(query);
+      }).map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+
+        return {
+          "uid": data["uid"] ?? doc.id,
+          "username": data["username"] ?? "",
+          "fullName": data["fullName"] ?? "",
+          "email": data["email"] ?? "",
+        };
+      }).toList();
     } catch (e) {
       print("Search error: $e");
     }
@@ -48,7 +59,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     setState(() => isLoading = false);
   }
 
-  // 🤝 SEND CONNECTION REQUEST
+  // 🤝 SEND REQUEST
   void sendRequest(String caregiverId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -59,51 +70,35 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Request sent to caregiver")),
+      SnackBar(content: Text("Request sent successfully")),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Elderly Dashboard"),
-      ),
+      appBar: AppBar(title: Text("Elderly Dashboard")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ❤️ STATUS BUTTON
             ElevatedButton(
               onPressed: sendCheckIn,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-              ),
-              child: Text(
-                "I'm OK ✅",
-                style: TextStyle(fontSize: 18),
-              ),
+              child: Text("I'm OK ✅"),
             ),
-
             SizedBox(height: 20),
-
-            // 🔍 SEARCH INPUT
             TextField(
               controller: searchController,
               decoration: InputDecoration(
-                labelText: "Search caregiver",
+                labelText: "Search caregiver (username / name / email)",
                 suffixIcon: IconButton(
                   icon: Icon(Icons.search),
                   onPressed: searchCaregivers,
                 ),
               ),
             ),
-
             SizedBox(height: 10),
-
             if (isLoading) CircularProgressIndicator(),
-
-            // 📋 RESULTS LIST
             Expanded(
               child: ListView.builder(
                 itemCount: caregivers.length,
@@ -113,12 +108,10 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                   return Card(
                     child: ListTile(
                       leading: Icon(Icons.person),
-                      title: Text(user["fullName"] ?? "No Name"),
-                      subtitle: Text(user["username"] ?? ""),
+                      title: Text(user["fullName"]),
+                      subtitle: Text("@${user["username"]}"),
                       trailing: ElevatedButton(
-                        onPressed: () {
-                          sendRequest(user["uid"]);
-                        },
+                        onPressed: () => sendRequest(user["uid"]),
                         child: Text("Connect"),
                       ),
                     ),
