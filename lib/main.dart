@@ -18,6 +18,8 @@ void main() async {
 }
 
 class CareLoopApp extends StatelessWidget {
+  const CareLoopApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

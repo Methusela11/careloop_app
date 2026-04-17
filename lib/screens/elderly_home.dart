@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/connection_service.dart';
 
 class ElderlyHome extends StatefulWidget {
+  const ElderlyHome({super.key});
+
   @override
   State<ElderlyHome> createState() => _ElderlyHomeState();
 }
