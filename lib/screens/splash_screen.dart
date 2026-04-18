@@ -136,7 +136,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: const Color.fromARGB(255, 1, 133, 29),
+                          color: const Color.fromARGB(255, 1, 63, 14),
                           letterSpacing: 1.2,
                         ),
                       ),
@@ -148,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         "Stay Connected. Stay Safe.",
                         style: TextStyle(
                           fontSize: 12,
-                          color: const Color.fromARGB(255, 246, 139, 0),
+                          color: const Color.fromARGB(255, 1, 66, 26),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
