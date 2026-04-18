@@ -150,7 +150,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(
                           "Welcome Back!",
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 22,
+                            color: const Color.fromARGB(255, 1, 133, 29),                            
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -173,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           focusedBorder: UnderlineInputBorder(
                             borderSide: BorderSide(
-                                color: const Color.fromARGB(255, 246, 139, 0)),
+                                color: const Color.fromARGB(255, 1, 87, 29)),
                           ),
                         ),
                       ),
@@ -210,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           focusedBorder: UnderlineInputBorder(
                             borderSide: BorderSide(
-                                color: const Color.fromARGB(255, 246, 139, 0)),
+                                color: const Color.fromARGB(255, 2, 68, 18)),
                           ),
                         ),
                       ),
