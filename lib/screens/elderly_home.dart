@@ -11,25 +11,132 @@ class ElderlyHome extends StatefulWidget {
   State<ElderlyHome> createState() => _ElderlyHomeState();
 }
 
-class _ElderlyHomeState extends State<ElderlyHome> {
-  final TextEditingController searchController = TextEditingController();
-  final ConnectionService _connectionService = ConnectionService();
+class CaregiverSearchDelegate extends SearchDelegate {
+  final Function(String) onConnect;
 
-  List<Map<String, dynamic>> caregivers = [];
-  bool isLoading = false;
+  CaregiverSearchDelegate({
+    required this.onConnect,
+  });
+
+  @override
+  String get searchFieldLabel => "Search caregiver";
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = "";
+          showSuggestions(context);
+        },
+      )
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  // 🔥 REAL SEARCH FUNCTION
+  Future<List<Map<String, dynamic>>> searchCaregivers(String query) async {
+    query = query.toLowerCase();
+
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection("users")
+        .where("role", isEqualTo: "caregiver")
+        .get();
+
+    return snapshot.docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      String username = (data["username"] ?? "").toLowerCase();
+      String fullName = (data["fullName"] ?? "").toLowerCase();
+      String email = (data["email"] ?? "").toLowerCase();
+
+      return username.contains(query) ||
+          fullName.contains(query) ||
+          email.contains(query);
+    }).map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      return {
+        "uid": data["uid"] ?? doc.id,
+        "username": data["username"] ?? "",
+        "fullName": data["fullName"] ?? "",
+      };
+    }).toList();
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: searchCaregivers(query),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final results = snapshot.data!;
+
+        if (results.isEmpty) {
+          return const Center(child: Text("No caregivers found"));
+        }
+
+        return ListView.builder(
+          itemCount: results.length,
+          itemBuilder: (context, index) {
+            final user = results[index];
+
+            return ListTile(
+              leading: const Icon(Icons.person),
+              title: Text(user["fullName"]),
+              subtitle: Text("@${user["username"]}"),
+              trailing: ElevatedButton(
+                onPressed: () => onConnect(user["uid"]),
+                child: const Text("Connect"),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return const Center(
+      child: Text("Search by name, username or email"),
+    );
+  }
+}
+
+//////////////////////////////
+// 👵 ELDERLY HOME
+//////////////////////////////
+class _ElderlyHomeState extends State<ElderlyHome> {
+  final ConnectionService _connectionService = ConnectionService();
 
   void sendCheckIn() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // get caregiver connection
     QuerySnapshot conn = await FirebaseFirestore.instance
         .collection("connections")
         .where("elderlyId", isEqualTo: user.uid)
         .where("status", isEqualTo: "accepted")
         .get();
 
-    if (conn.docs.isEmpty) return;
+    if (conn.docs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No caregiver connected ❗")),
+      );
+      return;
+    }
 
     String caregiverId = conn.docs.first["caregiverId"];
 
@@ -41,47 +148,8 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Check-in sent ✅")),
+      const SnackBar(content: Text("Check-in sent ✅")),
     );
-  }
-
-  // 🔍 SEARCH CAREGIVERS (FINAL VERSION)
-  void searchCaregivers() async {
-    setState(() => isLoading = true);
-
-    String query = searchController.text.trim().toLowerCase();
-
-    try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection("users")
-          .where("role", isEqualTo: "caregiver")
-          .get();
-
-      caregivers = snapshot.docs.where((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-
-        String username = (data["username"] ?? "").toString().toLowerCase();
-        String fullName = (data["fullName"] ?? "").toString().toLowerCase();
-        String email = (data["email"] ?? "").toString().toLowerCase();
-
-        return username.contains(query) ||
-            fullName.contains(query) ||
-            email.contains(query);
-      }).map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-
-        return {
-          "uid": data["uid"] ?? doc.id,
-          "username": data["username"] ?? "",
-          "fullName": data["fullName"] ?? "",
-          "email": data["email"] ?? "",
-        };
-      }).toList();
-    } catch (e) {
-      print("Search error: $e");
-    }
-
-    setState(() => isLoading = false);
   }
 
   // 🤝 SEND REQUEST
@@ -95,56 +163,50 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Request sent successfully")),
+      const SnackBar(content: Text("Request sent successfully")),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Elderly Dashboard")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ElevatedButton(
-              onPressed: sendCheckIn,
-              child: Text("I'm OK ✅"),
-            ),
-            SizedBox(height: 20),
-            TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                labelText: "Search caregiver (username / name / email)",
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.search),
-                  onPressed: searchCaregivers,
+      appBar: AppBar(
+        title: const Text("Elderly Dashboard"),
+        actions: [
+          // 🔍 SEARCH
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: CaregiverSearchDelegate(
+                  onConnect: sendRequest,
                 ),
-              ),
-            ),
-            SizedBox(height: 10),
-            if (isLoading) CircularProgressIndicator(),
-            Expanded(
-              child: ListView.builder(
-                itemCount: caregivers.length,
-                itemBuilder: (context, index) {
-                  final user = caregivers[index];
+              );
+            },
+          ),
 
-                  return Card(
-                    child: ListTile(
-                      leading: Icon(Icons.person),
-                      title: Text(user["fullName"]),
-                      subtitle: Text("@${user["username"]}"),
-                      trailing: ElevatedButton(
-                        onPressed: () => sendRequest(user["uid"]),
-                        child: Text("Connect"),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          // 👤 PROFILE
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Profile coming soon 🚧")),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: sendCheckIn,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+          ),
+          child: const Text(
+            "I'm OK ✅",
+            style: TextStyle(fontSize: 18),
+          ),
         ),
       ),
     );
