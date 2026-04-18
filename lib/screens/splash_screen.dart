@@ -156,7 +156,7 @@ class _SplashScreenState extends State<SplashScreen> {
                             children: [
                               // Image for each statement with error handling
                               Container(
-                                height: 50,
+                                height: 70,
                                 width: 80,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
