@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
 
   bool isLoading = false;
+  bool obscurePassword = true;
 
   void login() async {
     setState(() {
@@ -67,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: Stack(
           children: [
-           
+            // Orange accent shape (top-right)
             Positioned(
               top: -80,
               right: -80,
@@ -81,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            // 🔶 Bottom yellow accent
+            // Bottom orange accent
             Positioned(
               bottom: -60,
               left: -40,
@@ -98,7 +99,6 @@ class _LoginScreenState extends State<LoginScreen> {
             Center(
               child: SingleChildScrollView(
                 child: Container(
-                  // Removed Transform.rotate
                   width: 340,
                   padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
@@ -115,27 +115,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 🔹 Skip
-                      // Align(
-                      //   alignment: Alignment.topRight,
-                      //   child: Text(
-                      //     "Skip",
-                      //     style: TextStyle(
-                      //       color: Colors.grey.shade600,
-                      //       fontWeight: FontWeight.w500,
-                      //     ),
-                      //   ),
-                      // ),
-
                       const SizedBox(height: 10),
 
-                      // 🔹 Logo circle
+                      // Logo circle
                       Center(
                         child: Container(
                           width: 60,
                           height: 60,
-                          decoration: const BoxDecoration(
-                            color: Color.fromARGB(255, 252, 252, 252),
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 253, 253, 252)
+                                .withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: ClipRRect(
@@ -143,6 +132,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Image.asset(
                               'assets/images/logo/careloop-t.png',
                               fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Icon(
+                                  Icons.health_and_safety,
+                                  size: 30,
+                                  color: const Color.fromARGB(255, 246, 139, 0),
+                                );
+                              },
                             ),
                           ),
                         ),
@@ -162,68 +158,90 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 25),
 
-                      // 🔹 Email/Username
+                      // Email/Username with icon
                       TextField(
                         controller: inputController,
                         decoration: InputDecoration(
-                          labelText: "Email Address",
+                          labelText: "Email or Username",
                           labelStyle: TextStyle(color: Colors.grey.shade600),
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: const Color.fromARGB(255, 0, 49, 22),
+                              size: 20),
                           enabledBorder: const UnderlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
                           ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF0F3D2E)),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                                color: const Color.fromARGB(255, 246, 139, 0)),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 15),
 
-                      // 🔹 Password
+                      // Password with visibility toggle
                       TextField(
                         controller: passwordController,
-                        obscureText: true,
+                        obscureText: obscurePassword,
                         decoration: InputDecoration(
                           labelText: "Password",
                           labelStyle: TextStyle(color: Colors.grey.shade600),
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: const Color.fromARGB(255, 0, 49, 22),
+                              size: 20),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.grey.shade600,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                obscurePassword = !obscurePassword;
+                              });
+                            },
+                          ),
                           enabledBorder: const UnderlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
                           ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF0F3D2E)),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                                color: const Color.fromARGB(255, 246, 139, 0)),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 10),
 
-                      // // 🔹 Remember + Forgot
-                      // Row(
-                      //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      //   children: [
-                      //     Row(
-                      //       children: [
-                      //         Checkbox(
-                      //           value: false,
-                      //           onChanged: (v) {},
-                      //           activeColor: const Color(0xFF0F3D2E),
-                      //         ),
-                      //         const Text("Remember me"),
-                      //       ],
-                      //     ),
-                      //     TextButton(
-                      //       onPressed: () {},
-                      //       child: const Text(
-                      //         "Forgot Password?",
-                      //         style: TextStyle(color: Colors.grey),
-                      //       ),
-                      //     )
-                      //   ],
-                      // ),
+                      // Forgot Password link
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text("Forgot password feature coming soon"),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            "Forgot Password?",
+                            style: TextStyle(
+                              color: const Color.fromARGB(255, 5, 3, 0),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
 
                       const SizedBox(height: 10),
 
-                      // 🔹 Login Button (keeps your logic)
+                      // Login Button
                       SizedBox(
                         width: double.infinity,
                         child: isLoading
@@ -231,7 +249,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             : ElevatedButton(
                                 onPressed: login,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF0F3D2E),
+                                  backgroundColor:
+                                      const Color.fromARGB(255, 246, 139, 0),
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(
@@ -240,22 +259,39 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 child: const Text(
                                   "LOGIN",
-                                  style: TextStyle(color: Colors.white),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
                                 ),
                               ),
                       ),
 
                       const SizedBox(height: 15),
 
-                      // 🔹 Sign up
+                      // Sign up link
                       Center(
                         child: TextButton(
                           onPressed: () {
                             Navigator.pushNamed(context, "/signup");
                           },
-                          child: const Text(
-                            "Don’t have an account? SIGN UP",
-                            style: TextStyle(color: Colors.black87),
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(color: Colors.grey.shade600),
+                              children: [
+                                const TextSpan(text: "Don't have an account? "),
+                                TextSpan(
+                                  text: "SIGN UP",
+                                  style: TextStyle(
+                                    color:
+                                        const Color.fromARGB(255, 1, 133, 29),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

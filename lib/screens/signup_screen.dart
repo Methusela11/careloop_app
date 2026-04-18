@@ -373,6 +373,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 20,
                                   ),
                                 ),
                               ),
@@ -393,10 +394,11 @@ class _SignupScreenState extends State<SignupScreen> {
                                 const TextSpan(
                                     text: "Already have an account? "),
                                 TextSpan(
-                                  text: "SIGN IN",
+                                  text: "LOGIN",
                                   style: TextStyle(
                                     color: const Color(0xFF019603),
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 16,
                                   ),
                                 ),
                               ],

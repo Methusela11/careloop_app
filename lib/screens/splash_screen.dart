@@ -245,10 +245,10 @@ class _SplashScreenState extends State<SplashScreen> {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color.fromARGB(255, 246, 148, 0),
+                        color: const Color.fromARGB(255, 246, 111, 0),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color.fromARGB(255, 246, 131, 0).withOpacity(0.4),
+                            color: const Color.fromARGB(255, 246, 98, 0).withOpacity(0.4),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
