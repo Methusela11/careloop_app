@@ -39,8 +39,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          const Color.fromARGB(255, 1, 133, 29),
+      backgroundColor: const Color.fromARGB(255, 1, 133, 29),
       body: Stack(
         children: [
           Positioned(
@@ -76,8 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius:
-                    BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(28),
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black26,
@@ -94,7 +92,8 @@ class _SplashScreenState extends State<SplashScreen> {
                     height: 80,
                     width: 80,
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 252, 252, 251).withOpacity(0.1),
+                      color: const Color.fromARGB(255, 252, 252, 251)
+                          .withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: ClipRRect(
@@ -157,12 +156,13 @@ class _SplashScreenState extends State<SplashScreen> {
                             children: [
                               // Image for each statement with error handling
                               Container(
-                                height: 100,
-                                width: 130,
+                                height: 50,
+                                width: 80,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
                                   color:
-                                      const Color.fromARGB(255, 243, 243, 243).withOpacity(0.1),
+                                      const Color.fromARGB(255, 243, 243, 243)
+                                          .withOpacity(0.1),
                                 ),
                                 child: Image.asset(
                                   item.imagePath,
@@ -170,7 +170,7 @@ class _SplashScreenState extends State<SplashScreen> {
                                   errorBuilder: (context, error, stackTrace) {
                                     return Icon(
                                       item.icon,
-                                      size: 50,
+                                      size: 30,
                                       color: const Color(0xFFF6B400),
                                     );
                                   },
@@ -248,7 +248,8 @@ class _SplashScreenState extends State<SplashScreen> {
                         color: const Color.fromARGB(255, 246, 111, 0),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color.fromARGB(255, 246, 98, 0).withOpacity(0.4),
+                            color: const Color.fromARGB(255, 246, 98, 0)
+                                .withOpacity(0.4),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
