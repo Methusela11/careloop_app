@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/auth_service.dart';
 
@@ -186,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.pushReplacementNamed(context, "/login");
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: const Color.fromARGB(255, 247, 111, 1)),
             child: const Text("Sign Out"),
           ),
         ],
@@ -205,7 +205,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Profile"),
-        backgroundColor: Colors.teal,
+        backgroundColor: const Color.fromARGB(255, 223, 100, 0),
         foregroundColor: Colors.white,
         actions: [
           if (!isEditing && !isLoading)
@@ -244,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       // Profile Picture Section
                       Container(
-                        color: Colors.teal.shade50,
+                        color: const Color.fromARGB(255, 255, 255, 255),
                         padding: const EdgeInsets.all(32),
                         child: Column(
                           children: [
@@ -290,7 +290,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
-                                      color: Colors.teal,
+                                      color: const Color.fromARGB(255, 0, 117, 45),
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                           color: Colors.white, width: 3),
@@ -392,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                     child: Icon(
                                       Icons.assignment_ind,
-                                      color: Colors.teal.shade800,
+                                      color: const Color.fromARGB(255, 0, 63, 4),
                                       size: 20,
                                     ),
                                   ),
@@ -458,8 +458,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: OutlinedButton(
                                 onPressed: _signOut,
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                  side: const BorderSide(color: Colors.red),
+                                  foregroundColor: const Color.fromARGB(255, 248, 100, 1),
+                                  side: const BorderSide(color: Color.fromARGB(255, 245, 111, 1)),
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(
@@ -509,7 +509,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Icon(
               icon,
-              color: Colors.teal.shade800,
+              color: const Color.fromARGB(255, 0, 87, 12),
               size: 20,
             ),
           ),
