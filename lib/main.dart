@@ -6,6 +6,7 @@ import 'screens/login_screen.dart';
 import 'screens/elderly_home.dart';
 import 'screens/caregiver_home.dart';
 import 'screens/splash_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() async {
   // ✅ Required for Firebase
@@ -33,9 +34,9 @@ class CareLoopApp extends StatelessWidget {
         "/": (context) => SplashScreen(),
         "/login": (context) => LoginScreen(),
         "/signup": (context) => SignupScreen(),
+        "/profile": (context) => ProfileScreen(),
         "/elderlyHome": (context) => ElderlyHome(),
         "/caregiverHome": (context) => CaregiverHome(),
-        
       },
     );
   }

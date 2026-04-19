@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // ✅ ADD THIS
+import 'dart:io'; // ✅ ADD THIS for File
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance; // ✅ ADD THIS
 
   // ✅ SIGN UP (stores full user profile)
   Future<UserCredential> signUp({
@@ -28,12 +31,36 @@ class AuthService {
         "username": username.trim().toLowerCase(),
         "email": email.trim(),
         "role": role,
+        "profileImageUrl": "", // ✅ ADD THIS field
         "createdAt": FieldValue.serverTimestamp(),
       });
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
       throw Exception(e.message);
+    }
+  }
+
+  // ✅ UPLOAD PROFILE PICTURE - ADD THIS METHOD
+  Future<String> uploadProfilePicture(File imageFile, String uid) async {
+    try {
+      // Create a reference to the profile image
+      final ref = _storage.ref().child('profile_pictures/$uid.jpg');
+
+      // Upload the file
+      await ref.putFile(imageFile);
+
+      // Get the download URL
+      String downloadUrl = await ref.getDownloadURL();
+
+      // Update Firestore with the new image URL
+      await _firestore.collection("users").doc(uid).update({
+        "profileImageUrl": downloadUrl,
+      });
+
+      return downloadUrl;
+    } catch (e) {
+      throw Exception("Failed to upload profile picture: $e");
     }
   }
 

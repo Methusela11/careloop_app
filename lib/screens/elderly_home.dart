@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/connection_service.dart';
+import '../services/auth_service.dart';
+import 'profile_screen.dart';
 
 class ElderlyHome extends StatefulWidget {
   const ElderlyHome({super.key});
@@ -115,11 +117,33 @@ class CaregiverSearchDelegate extends SearchDelegate {
   }
 }
 
-//////////////////////////////
-// 👵 ELDERLY HOME
-//////////////////////////////
 class _ElderlyHomeState extends State<ElderlyHome> {
   final ConnectionService _connectionService = ConnectionService();
+  final AuthService _authService = AuthService();
+
+  Map<String, dynamic>? userData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final data = await _authService.getUserData(user.uid);
+      setState(() {
+        userData = data;
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   void sendCheckIn() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -171,7 +195,23 @@ class _ElderlyHomeState extends State<ElderlyHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Elderly Dashboard"),
+        title: isLoading
+            ? const Text("Elderly Dashboard")
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Elderly Dashboard",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  if (userData != null && userData!["username"] != null)
+                    Text(
+                      "@${userData!["username"]}",
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.normal),
+                    ),
+                ],
+              ),
         actions: [
           // 🔍 SEARCH
           IconButton(
@@ -186,27 +226,44 @@ class _ElderlyHomeState extends State<ElderlyHome> {
             },
           ),
 
-          // 👤 PROFILE
+          // 👤 PROFILE - Updated to navigate to ProfileScreen
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Profile coming soon 🚧")),
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
             },
           ),
         ],
       ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: sendCheckIn,
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-          ),
-          child: const Text(
-            "I'm OK ✅",
-            style: TextStyle(fontSize: 18),
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (!isLoading && userData != null)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  "Welcome, ${userData!["fullName"] ?? "User"}!",
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: sendCheckIn,
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+              ),
+              child: const Text(
+                "I'm OK ✅",
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
         ),
       ),
     );
