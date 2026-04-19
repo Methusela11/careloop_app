@@ -150,7 +150,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           width: 60,
                           height: 60,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFff751f).withOpacity(0.1),
+                            color: const Color.fromARGB(255, 248, 248, 248).withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: ClipRRect(
@@ -176,7 +176,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: Text(
                           "Create Account",
                           style: TextStyle(
-                            color: const Color.fromARGB(255, 1, 133, 29),
+                            color: Color.fromARGB(255, 0, 0, 0),
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -257,14 +257,14 @@ class _SignupScreenState extends State<SignupScreen> {
                           labelText: "Password",
                           labelStyle: TextStyle(color: Colors.grey.shade600),
                           prefixIcon: Icon(Icons.lock_outline,
-                              color: const Color.fromARGB(255, 0, 49, 22),
+                              color: const Color.fromARGB(255, 41, 43, 42),
                               size: 20),
                           suffixIcon: IconButton(
                             icon: Icon(
                               obscurePassword
                                   ? Icons.visibility_off
                                   : Icons.visibility,
-                              color: const Color.fromARGB(255, 0, 61, 26),
+                              color: Colors.grey.shade600,
                               size: 20,
                             ),
                             onPressed: () {

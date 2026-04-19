@@ -74,18 +74,17 @@ class _SplashScreenState extends State<SplashScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 246, 139, 0).withOpacity(0.3),
+                color: const Color.fromARGB(255, 58, 57, 57).withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
             ),
           ),
 
-          // Center content with downward positioning
-          Center(
+          Align(
+            alignment: Alignment(0, 1),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Spacer(),
                 Container(
                   width: 330,
                   padding: const EdgeInsets.all(24),
@@ -149,10 +148,10 @@ class _SplashScreenState extends State<SplashScreen> {
                             return Container(
                               margin: const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: const Color.fromARGB(255, 231, 233, 232),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: Colors.grey[200]!,
+                                  color: Colors.grey[400]!,
                                   width: 1,
                                 ),
                               ),
