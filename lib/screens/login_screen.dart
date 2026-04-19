@@ -18,27 +18,33 @@ class _LoginScreenState extends State<LoginScreen> {
   bool obscurePassword = true;
 
   void login() async {
+    String input = inputController.text.trim();
+    String password = passwordController.text.trim();
+
+    // ✅ VALIDATION FIRST
+    if (input.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Please enter email/username and password")),
+      );
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
 
     try {
-      String input = inputController.text.trim().toLowerCase();
-      String password = passwordController.text.trim();
-
-      // 🔥 STEP 1: LOGIN (email OR username)
       await _authService.loginWithEmailOrUsername(
-        input: input,
+        input: input.toLowerCase(),
         password: password,
       );
 
-      // 🔥 STEP 2: GET USER
       final user = _authService.getCurrentUser();
       final userData = await _authService.getUserData(user!.uid);
 
       String role = userData?["role"] ?? "pending";
 
-      // 🔥 STEP 3: ROUTE BY ROLE
       if (role == "caregiver") {
         Navigator.pushReplacementNamed(context, "/caregiverHome");
       } else if (role == "elderly") {
