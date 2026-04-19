@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-          color: Color.fromARGB(255, 1, 133, 29),
+          color: Color.fromARGB(255, 97, 104, 99),
         ),
         child: Stack(
           children: [
@@ -76,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 250,
                 height: 250,
                 decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 246, 139, 0),
+                  color: Color.fromARGB(255, 97, 104, 99),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 180,
                 height: 180,
                 decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 246, 139, 0),
+                  color: Color.fromARGB(255, 97, 104, 99),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           "Welcome Back!",
                           style: TextStyle(
                             fontSize: 22,
-                            color: const Color.fromARGB(255, 1, 133, 29),                            
+                            color: const Color.fromARGB(255, 1, 133, 29),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -165,9 +165,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: "Email or Username",
                           labelStyle: TextStyle(color: Colors.grey.shade600),
-                          prefixIcon: Icon(
-                            Icons.person_outline,
-                            color: const Color.fromARGB(255, 0, 49, 22),
+                          prefixIcon: Icon(Icons.person_outline,
+                              color: const Color.fromARGB(255, 0, 49, 22),
                               size: 20),
                           enabledBorder: const UnderlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
@@ -188,9 +187,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: "Password",
                           labelStyle: TextStyle(color: Colors.grey.shade600),
-                          prefixIcon: Icon(
-                            Icons.lock_outline,
-                            color: const Color.fromARGB(255, 0, 49, 22),
+                          prefixIcon: Icon(Icons.lock_outline,
+                              color: const Color.fromARGB(255, 0, 49, 22),
                               size: 20),
                           suffixIcon: IconButton(
                             icon: Icon(

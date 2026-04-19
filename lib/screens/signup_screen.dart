@@ -77,7 +77,7 @@ class _SignupScreenState extends State<SignupScreen> {
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-          color: Color.fromARGB(255, 1, 133, 29),
+          color: Color.fromARGB(255, 97, 104, 99),
         ),
         child: Stack(
           children: [
@@ -88,7 +88,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 width: 250,
                 height: 250,
                 decoration: BoxDecoration(
-                  color: Color.fromARGB(255, 246, 139, 0),
+                  color: Color.fromARGB(255, 97, 104, 99),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -102,7 +102,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 width: 180,
                 height: 180,
                 decoration: BoxDecoration(
-                  color: Color.fromARGB(255, 246, 139, 0),
+                  color: Color.fromARGB(255, 97, 104, 99),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -116,7 +116,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: Color.fromARGB(255, 246, 139, 0),
+                  color: Color.fromARGB(255, 97, 104, 99),
                   shape: BoxShape.circle,
                 ),
               ),

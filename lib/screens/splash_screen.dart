@@ -39,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 1, 133, 29),
+      backgroundColor: const Color.fromARGB(255, 97, 104, 99),
       body: Stack(
         children: [
           // Decorative circles
@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
               width: 250,
               height: 250,
               decoration: const BoxDecoration(
-                color: Color.fromARGB(255, 246, 139, 0),
+                color: Color.fromARGB(255, 97, 104, 99),
                 shape: BoxShape.circle,
               ),
             ),
@@ -62,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen> {
               width: 180,
               height: 180,
               decoration: const BoxDecoration(
-                color: Color.fromARGB(255, 246, 139, 0),
+                color: Color.fromARGB(255, 97, 104, 99),
                 shape: BoxShape.circle,
               ),
             ),
