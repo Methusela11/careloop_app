@@ -85,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Spacer(), // Pushes content down
+                const Spacer(),
                 Container(
                   width: 330,
                   padding: const EdgeInsets.all(24),
@@ -128,31 +128,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
-
-                      // App Title
-                      Text(
-                        "CareLoop",
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: const Color.fromARGB(255, 1, 63, 14),
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
                       // Tagline
-                      Text(
-                        "Stay Connected. Stay Safe.",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: const Color.fromARGB(255, 1, 66, 26),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-
                       const SizedBox(height: 20),
 
                       // HORIZONTAL SCROLLABLE CAROUSEL WITH IMAGES
@@ -189,9 +165,9 @@ class _SplashScreenState extends State<SplashScreen> {
                                     width: 100,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(12),
-                                      color:
-                                          const Color.fromARGB(255, 255, 255, 255)
-                                              .withOpacity(0.1),
+                                      color: const Color.fromARGB(
+                                              255, 255, 255, 255)
+                                          .withOpacity(0.1),
                                     ),
                                     child: Image.asset(
                                       item.imagePath,
@@ -201,7 +177,8 @@ class _SplashScreenState extends State<SplashScreen> {
                                         return Icon(
                                           item.icon,
                                           size: 35,
-                                          color: const Color.fromARGB(255, 8, 5, 0),
+                                          color: const Color.fromARGB(
+                                              255, 8, 5, 0),
                                         );
                                       },
                                     ),

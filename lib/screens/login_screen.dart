@@ -96,7 +96,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            Center(
+            Align(
+              alignment: Alignment(0, 1),
               child: SingleChildScrollView(
                 child: Container(
                   width: 340,
@@ -151,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           "Welcome Back!",
                           style: TextStyle(
                             fontSize: 22,
-                            color: const Color.fromARGB(255, 1, 133, 29),
+                            color: Color.fromARGB(255, 0, 5, 0),
                             fontWeight: FontWeight.bold,
                           ),
                         ),

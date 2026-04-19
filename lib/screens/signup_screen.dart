@@ -122,7 +122,8 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
             ),
 
-            Center(
+            Align(
+              alignment: Alignment(0, 1),
               child: SingleChildScrollView(
                 child: Container(
                   width: 340,
