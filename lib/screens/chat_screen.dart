@@ -10,11 +10,11 @@ class ChatScreen extends StatefulWidget {
   final String otherUserImage;
 
   const ChatScreen({
-    Key? key,
+    super.key,
     required this.otherUserId,
     required this.otherUserName,
     this.otherUserImage = '',
-  }) : super(key: key);
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -35,7 +35,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _getCurrentUser() async {
-    final user = await _authService.getCurrentUser();
+    final user = _authService.getCurrentUser();
     setState(() {
       currentUserId = user?.uid;
     });

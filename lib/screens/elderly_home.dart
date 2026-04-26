@@ -177,7 +177,6 @@ class _ElderlyHomeState extends State<ElderlyHome> {
 
   Map<String, dynamic>? userData;
   bool isLoading = true;
-  int _selectedIndex = 0;
   int _unreadMessages = 0;
   int _unreadAlerts = 0;
   String? connectedCaregiverId;
@@ -195,14 +194,18 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final data = await _authService.getUserData(user.uid);
-      setState(() {
-        userData = data;
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          userData = data;
+          isLoading = false;
+        });
+      }
     } else {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -217,7 +220,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
         .limit(1)
         .get();
 
-    if (connections.docs.isNotEmpty) {
+    if (connections.docs.isNotEmpty && mounted) {
       final caregiverId = connections.docs.first["caregiverId"];
       setState(() {
         connectedCaregiverId = caregiverId;
@@ -229,7 +232,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
           .doc(caregiverId)
           .get();
 
-      if (caregiverDoc.exists) {
+      if (caregiverDoc.exists && mounted) {
         setState(() {
           connectedCaregiver = caregiverDoc.data() as Map<String, dynamic>;
         });
@@ -255,14 +258,16 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     });
   }
 
-  void sendCheckIn() async {
+  Future<void> sendCheckIn() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     if (connectedCaregiverId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No caregiver connected ❗")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No caregiver connected ❗")),
+        );
+      }
       return;
     }
 
@@ -432,7 +437,8 @@ class _ElderlyHomeState extends State<ElderlyHome> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color:
+                  color.withValues(alpha: 0.1), // Fixed deprecated withOpacity
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 32, color: color),
@@ -445,7 +451,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     );
   }
 
-  void sendRequest(String caregiverId) async {
+  Future<void> sendRequest(String caregiverId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -803,7 +809,8 @@ class _ElderlyHomeState extends State<ElderlyHome> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(
+                    alpha: 0.1), // Fixed deprecated withOpacity
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 28, color: color),

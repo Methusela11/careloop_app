@@ -5,7 +5,13 @@ import 'package:intl/intl.dart';
 
 import '../services/connection_service.dart';
 import '../services/auth_service.dart';
+import '../services/checkin_service.dart';
+import '../services/alert_service.dart';
+import '../services/message_service.dart';
 import 'profile_screen.dart';
+import 'chat_screen.dart';
+import 'alerts_screen.dart';
+import 'daily_report_screen.dart';
 
 class CaregiverHome extends StatefulWidget {
   const CaregiverHome({super.key});
@@ -18,17 +24,23 @@ class _CaregiverHomeState extends State<CaregiverHome>
     with SingleTickerProviderStateMixin {
   final ConnectionService _connectionService = ConnectionService();
   final AuthService _authService = AuthService();
+  final CheckinService _checkinService = CheckinService();
+  final AlertService _alertService = AlertService();
+  final MessageService _messageService = MessageService();
   final user = FirebaseAuth.instance.currentUser;
 
   Map<String, dynamic>? userData;
   late TabController _tabController;
   bool isLoading = true;
+  int _unreadMessages = 0;
+  int _unreadAlerts = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _loadUserData();
+    _loadUnreadCounts();
   }
 
   @override
@@ -42,21 +54,43 @@ class _CaregiverHomeState extends State<CaregiverHome>
     if (user != null) {
       try {
         final data = await _authService.getUserData(user!.uid);
-        setState(() {
-          userData = data;
-          isLoading = false;
-        });
-      } catch (e) {
-        setState(() => isLoading = false);
         if (mounted) {
+          setState(() {
+            userData = data;
+            isLoading = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Error loading user data: $e")),
           );
         }
       }
     } else {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
+  }
+
+  void _loadUnreadCounts() {
+    _messageService.getUnreadMessagesCount().listen((count) {
+      if (mounted) {
+        setState(() {
+          _unreadMessages = count;
+        });
+      }
+    });
+
+    _alertService.getUnreadAlertsCount().listen((count) {
+      if (mounted) {
+        setState(() {
+          _unreadAlerts = count;
+        });
+      }
+    });
   }
 
   Future<void> acceptRequest(String connectionId) async {
@@ -105,73 +139,136 @@ class _CaregiverHomeState extends State<CaregiverHome>
     }
   }
 
-  Future<void> sendAlert(String elderlyId, String elderlyName) async {
+  Future<void> sendAlertToElderly(String elderlyId, String elderlyName) async {
     TextEditingController messageController = TextEditingController();
+    AlertPriority selectedPriority = AlertPriority.medium;
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Send Alert"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("Send alert to $elderlyName"),
-            const SizedBox(height: 10),
-            TextField(
-              controller: messageController,
-              decoration: const InputDecoration(
-                hintText: "Alert message (optional)",
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text("Send Alert to Elderly"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Send alert to $elderlyName"),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: messageController,
+                  decoration: const InputDecoration(
+                    hintText: "Alert message (optional)",
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<AlertPriority>(
+                  value: selectedPriority,
+                  decoration: const InputDecoration(
+                    labelText: 'Priority',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: AlertPriority.values.map((priority) {
+                    return DropdownMenuItem(
+                      value: priority,
+                      child: Row(
+                        children: [
+                          Icon(
+                            _getPriorityIcon(priority),
+                            color: _getPriorityColor(priority),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(priority
+                              .toString()
+                              .split('.')
+                              .last
+                              .toUpperCase()),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setStateDialog(() {
+                        selectedPriority = value;
+                      });
+                    }
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await FirebaseFirestore.instance.collection("alerts").add({
-                  "elderlyId": elderlyId,
-                  "caregiverId": user!.uid,
-                  "message": messageController.text.isEmpty
-                      ? "Please check in with your caregiver"
-                      : messageController.text,
-                  "timestamp": FieldValue.serverTimestamp(),
-                  "isRead": false,
-                  "type": "alert",
-                  "senderName": userData?["fullName"] ?? "Caregiver",
-                });
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    await _alertService.sendAlert(
+                      receiverId: elderlyId,
+                      title: "Alert from Caregiver",
+                      message: messageController.text.isEmpty
+                          ? "Please check in with your caregiver"
+                          : messageController.text,
+                      priority: selectedPriority,
+                    );
 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Alert sent successfully"),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Error sending alert: $e"),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text("Send Alert"),
-          ),
-        ],
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Alert sent successfully"),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Error sending alert: $e"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text("Send Alert"),
+              ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  IconData _getPriorityIcon(AlertPriority priority) {
+    switch (priority) {
+      case AlertPriority.low:
+        return Icons.info_outline;
+      case AlertPriority.medium:
+        return Icons.warning_amber_outlined;
+      case AlertPriority.high:
+        return Icons.warning;
+      case AlertPriority.emergency:
+        return Icons.emergency;
+    }
+  }
+
+  Color _getPriorityColor(AlertPriority priority) {
+    switch (priority) {
+      case AlertPriority.low:
+        return Colors.blue;
+      case AlertPriority.medium:
+        return Colors.orange;
+      case AlertPriority.high:
+        return Colors.red;
+      case AlertPriority.emergency:
+        return Colors.deepOrange;
+    }
   }
 
   Future<void> sendWellnessReminder(
@@ -240,6 +337,67 @@ class _CaregiverHomeState extends State<CaregiverHome>
     }
   }
 
+  Future<void> respondToCheckIn(String checkInId, String elderlyName) async {
+    TextEditingController responseController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Respond to $elderlyName"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Your response:"),
+            const SizedBox(height: 10),
+            TextField(
+              controller: responseController,
+              decoration: const InputDecoration(
+                hintText: "Type your response...",
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _checkinService.respondToCheckIn(
+                  checkInId,
+                  responseController.text,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Response sent successfully"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Error sending response: $e"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Send Response"),
+          ),
+        ],
+      ),
+    );
+  }
+
   void viewHealthData(String elderlyId, String elderlyName) {
     Navigator.push(
       context,
@@ -266,9 +424,9 @@ class _CaregiverHomeState extends State<CaregiverHome>
       context,
       MaterialPageRoute(
         builder: (context) => ChatScreen(
-          elderlyId: elderlyId,
-          elderlyName: elderlyName,
-          caregiverId: user!.uid,
+          otherUserId: elderlyId,
+          otherUserName: elderlyName,
+          otherUserImage: '',
         ),
       ),
     );
@@ -282,6 +440,15 @@ class _CaregiverHomeState extends State<CaregiverHome>
           elderlyId: elderlyId,
           elderlyName: elderlyName,
         ),
+      ),
+    );
+  }
+
+  void _navigateToAlerts() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AlertsScreen(),
       ),
     );
   }
@@ -321,6 +488,75 @@ class _CaregiverHomeState extends State<CaregiverHome>
           ],
         ),
         actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chat),
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text("Select an elderly to chat with")),
+                  );
+                },
+              ),
+              if (_unreadMessages > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      _unreadMessages > 9 ? '9+' : '$_unreadMessages',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: _navigateToAlerts,
+              ),
+              if (_unreadAlerts > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      _unreadAlerts > 9 ? '9+' : '$_unreadAlerts',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
@@ -645,8 +881,8 @@ class _CaregiverHomeState extends State<CaregiverHome>
                               children: [
                                 Expanded(
                                   child: OutlinedButton.icon(
-                                    onPressed: () =>
-                                        sendAlert(elderlyId, elderlyName),
+                                    onPressed: () => sendAlertToElderly(
+                                        elderlyId, elderlyName),
                                     icon: const Icon(Icons.warning,
                                         color: Colors.orange),
                                     label: const Text("Send Alert"),
@@ -692,10 +928,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
 
   Widget _buildCheckInsTab() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection("checkins")
-          .where("caregiverId", isEqualTo: user!.uid)
-          .snapshots(),
+      stream: _checkinService.getCheckInsForCaregiver(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
@@ -720,18 +953,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
           return const Center(child: CircularProgressIndicator());
         }
 
-        // Create a copy of docs and sort
-        final docs = List<QueryDocumentSnapshot>.from(snapshot.data!.docs);
-
-        // Sort manually
-        docs.sort((a, b) {
-          final aTimestamp = a["timestamp"] as Timestamp?;
-          final bTimestamp = b["timestamp"] as Timestamp?;
-          if (aTimestamp == null && bTimestamp == null) return 0;
-          if (aTimestamp == null) return 1;
-          if (bTimestamp == null) return -1;
-          return bTimestamp.toDate().compareTo(aTimestamp.toDate());
-        });
+        final docs = snapshot.data!.docs;
 
         if (docs.isEmpty) {
           return const Center(
@@ -760,6 +982,9 @@ class _CaregiverHomeState extends State<CaregiverHome>
             final elderlyId = data["elderlyId"];
             final timestamp = data["timestamp"] as Timestamp?;
             final status = data["status"] ?? "ok";
+            final notes = data["notes"] ?? "";
+            final moodRating = data["moodRating"] ?? 3.0;
+            final isResponded = data["isResponded"] ?? false;
 
             return FutureBuilder<DocumentSnapshot>(
               future: FirebaseFirestore.instance
@@ -774,6 +999,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
                 }
 
                 final userData = userSnap.data!.data() as Map<String, dynamic>;
+                final elderlyName = userData["fullName"] ?? "Unknown";
                 final checkInTime = timestamp != null
                     ? DateFormat('MMM d, yyyy • h:mm a')
                         .format(timestamp.toDate())
@@ -785,24 +1011,30 @@ class _CaregiverHomeState extends State<CaregiverHome>
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                  child: ExpansionTile(
                     leading: CircleAvatar(
                       radius: 25,
                       backgroundColor: status == "ok"
                           ? Colors.green.shade100
-                          : Colors.red.shade100,
+                          : status == "needHelp"
+                              ? Colors.orange.shade100
+                              : Colors.red.shade100,
                       child: Icon(
-                        status == "ok" ? Icons.check_circle : Icons.warning,
-                        color: status == "ok" ? Colors.green : Colors.red,
+                        status == "ok"
+                            ? Icons.check_circle
+                            : status == "needHelp"
+                                ? Icons.warning
+                                : Icons.emergency,
+                        color: status == "ok"
+                            ? Colors.green
+                            : status == "needHelp"
+                                ? Colors.orange
+                                : Colors.red,
                         size: 30,
                       ),
                     ),
                     title: Text(
-                      userData["fullName"] ?? "Unknown",
+                      elderlyName,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -826,11 +1058,70 @@ class _CaregiverHomeState extends State<CaregiverHome>
                                 style: TextStyle(color: Colors.white)),
                             backgroundColor: Colors.green,
                           )
-                        : Chip(
-                            label: const Text("NEEDS ATTENTION",
-                                style: TextStyle(color: Colors.white)),
-                            backgroundColor: Colors.red,
-                          ),
+                        : status == "needHelp"
+                            ? Chip(
+                                label: const Text("NEEDS HELP",
+                                    style: TextStyle(color: Colors.white)),
+                                backgroundColor: Colors.orange,
+                              )
+                            : Chip(
+                                label: const Text("EMERGENCY",
+                                    style: TextStyle(color: Colors.white)),
+                                backgroundColor: Colors.red,
+                              ),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (moodRating != 3.0 || notes.isNotEmpty) ...[
+                              const Text(
+                                "Details:",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              if (moodRating != 3.0)
+                                Row(
+                                  children: [
+                                    const Icon(Icons.star,
+                                        color: Colors.amber, size: 16),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                        "Mood Rating: ${moodRating.round()}/5"),
+                                  ],
+                                ),
+                              if (notes.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text("Notes: $notes"),
+                              ],
+                              const Divider(),
+                            ],
+                            if (!isResponded)
+                              ElevatedButton.icon(
+                                onPressed: () => respondToCheckIn(
+                                    docs[index].id, elderlyName),
+                                icon: const Icon(Icons.reply),
+                                label: const Text("Respond to Check-in"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                ),
+                              )
+                            else ...[
+                              const Icon(Icons.check_circle,
+                                  color: Colors.green),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Response sent: ${data["caregiverResponse"]}",
+                                style: const TextStyle(
+                                    fontStyle: FontStyle.italic),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -843,10 +1134,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
 
   Widget _buildAlertsTab() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection("alerts")
-          .where("caregiverId", isEqualTo: user!.uid)
-          .snapshots(),
+      stream: _alertService.getAlerts(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
@@ -856,12 +1144,6 @@ class _CaregiverHomeState extends State<CaregiverHome>
                 const Icon(Icons.error_outline, size: 64, color: Colors.red),
                 const SizedBox(height: 16),
                 Text("Error: ${snapshot.error}"),
-                const SizedBox(height: 8),
-                const Text(
-                  "Please check your internet connection",
-                  style: TextStyle(color: Colors.orange),
-                  textAlign: TextAlign.center,
-                ),
               ],
             ),
           );
@@ -871,18 +1153,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
           return const Center(child: CircularProgressIndicator());
         }
 
-        // Create a copy of docs and sort
-        final docs = List<QueryDocumentSnapshot>.from(snapshot.data!.docs);
-
-        // Sort manually
-        docs.sort((a, b) {
-          final aTimestamp = a["timestamp"] as Timestamp?;
-          final bTimestamp = b["timestamp"] as Timestamp?;
-          if (aTimestamp == null && bTimestamp == null) return 0;
-          if (aTimestamp == null) return 1;
-          if (bTimestamp == null) return -1;
-          return bTimestamp.toDate().compareTo(aTimestamp.toDate());
-        });
+        final docs = snapshot.data!.docs;
 
         if (docs.isEmpty) {
           return const Center(
@@ -894,7 +1165,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
                 Text("No alerts"),
                 SizedBox(height: 8),
                 Text(
-                  "Alerts from elderly users will appear here",
+                  "Alerts will appear here",
                   style: TextStyle(color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
@@ -908,15 +1179,17 @@ class _CaregiverHomeState extends State<CaregiverHome>
           itemCount: docs.length,
           itemBuilder: (context, index) {
             final data = docs[index];
-            final elderlyId = data["elderlyId"];
+            final senderId = data["senderId"];
             final timestamp = data["timestamp"] as Timestamp?;
+            final title = data["title"] ?? "Alert";
             final message = data["message"] ?? "";
             final isRead = data["isRead"] ?? false;
+            final priority = data["priority"] ?? "medium";
 
             return FutureBuilder<DocumentSnapshot>(
               future: FirebaseFirestore.instance
                   .collection("users")
-                  .doc(elderlyId)
+                  .doc(senderId)
                   .get(),
               builder: (context, userSnap) {
                 if (!userSnap.hasData) {
@@ -926,6 +1199,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
                 }
 
                 final userData = userSnap.data!.data() as Map<String, dynamic>;
+                final senderName = userData["fullName"] ?? "Unknown";
                 final alertTime = timestamp != null
                     ? DateFormat('MMM d, yyyy • h:mm a')
                         .format(timestamp.toDate())
@@ -945,42 +1219,62 @@ class _CaregiverHomeState extends State<CaregiverHome>
                     ),
                     leading: CircleAvatar(
                       radius: 25,
-                      backgroundColor: Colors.red.shade100,
-                      child: const Icon(
-                        Icons.notifications_active,
-                        color: Colors.red,
+                      backgroundColor: priority == 'low'
+                          ? Colors.blue.shade100
+                          : priority == 'medium'
+                              ? Colors.orange.shade100
+                              : priority == 'high'
+                                  ? Colors.red.shade100
+                                  : Colors.deepOrange.shade100,
+                      child: Icon(
+                        priority == 'low'
+                            ? Icons.info_outline
+                            : priority == 'medium'
+                                ? Icons.warning_amber_outlined
+                                : priority == 'high'
+                                    ? Icons.warning
+                                    : Icons.emergency,
+                        color: priority == 'low'
+                            ? Colors.blue
+                            : priority == 'medium'
+                                ? Colors.orange
+                                : priority == 'high'
+                                    ? Colors.red
+                                    : Colors.deepOrange,
                         size: 30,
                       ),
                     ),
                     title: Text(
-                      userData["fullName"] ?? "Unknown",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                      title,
+                      style: TextStyle(
+                        fontWeight:
+                            isRead ? FontWeight.normal : FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(message, style: const TextStyle(fontSize: 14)),
+                        Text("From: $senderName"),
+                        Text(message,
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 4),
                         Text(
                           alertTime,
                           style:
-                              TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              TextStyle(fontSize: 11, color: Colors.grey[600]),
                         ),
                       ],
                     ),
+                    isThreeLine: true,
                     trailing: !isRead
                         ? IconButton(
                             icon: const Icon(Icons.mark_email_read,
                                 color: Colors.red),
                             onPressed: () async {
                               try {
-                                await FirebaseFirestore.instance
-                                    .collection("alerts")
-                                    .doc(docs[index].id)
-                                    .update({"isRead": true});
+                                await _alertService
+                                    .markAlertAsRead(docs[index].id);
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -1013,16 +1307,16 @@ class _CaregiverHomeState extends State<CaregiverHome>
   }
 }
 
-// Supporting screens remain the same...
+// Supporting screens
 class ElderlyHealthDataScreen extends StatelessWidget {
   final String elderlyId;
   final String elderlyName;
 
   const ElderlyHealthDataScreen({
-    Key? key,
+    super.key,
     required this.elderlyId,
     required this.elderlyName,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1043,85 +1337,6 @@ class ElderlyHealthDataScreen extends StatelessWidget {
             SizedBox(height: 8),
             Text(
               "This feature will include vital signs, medication tracking, and more.",
-              style: TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ChatScreen extends StatelessWidget {
-  final String elderlyId;
-  final String elderlyName;
-  final String caregiverId;
-
-  const ChatScreen({
-    Key? key,
-    required this.elderlyId,
-    required this.elderlyName,
-    required this.caregiverId,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Chat with $elderlyName"),
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.chat, size: 64, color: Colors.blue),
-            SizedBox(height: 16),
-            Text(
-              "Chat functionality coming soon!",
-              style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 8),
-            Text(
-              "Real-time messaging will be available here.",
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class DailyReportScreen extends StatelessWidget {
-  final String elderlyId;
-  final String elderlyName;
-
-  const DailyReportScreen({
-    Key? key,
-    required this.elderlyId,
-    required this.elderlyName,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Daily Report - $elderlyName"),
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.report, size: 64, color: Colors.orange),
-            SizedBox(height: 16),
-            Text(
-              "Daily report generation coming soon!",
-              style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 8),
-            Text(
-              "Reports will include check-ins, alerts, and reminders.",
               style: TextStyle(color: Colors.grey),
               textAlign: TextAlign.center,
             ),

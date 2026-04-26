@@ -9,10 +9,10 @@ class DailyReportScreen extends StatefulWidget {
   final String elderlyName;
 
   const DailyReportScreen({
-    Key? key,
+    super.key,
     required this.elderlyId,
     required this.elderlyName,
-  }) : super(key: key);
+  });
 
   @override
   State<DailyReportScreen> createState() => _DailyReportScreenState();

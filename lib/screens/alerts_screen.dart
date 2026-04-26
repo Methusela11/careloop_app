@@ -5,7 +5,7 @@ import '../services/alert_service.dart';
 import '../services/auth_service.dart';
 
 class AlertsScreen extends StatefulWidget {
-  const AlertsScreen({Key? key}) : super(key: key);
+  const AlertsScreen({super.key});
 
   @override
   State<AlertsScreen> createState() => _AlertsScreenState();
@@ -23,7 +23,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   Future<void> _getCurrentUser() async {
-    final user = await _authService.getCurrentUser();
+    final user = _authService.getCurrentUser();
     setState(() {
       currentUserId = user?.uid;
     });
