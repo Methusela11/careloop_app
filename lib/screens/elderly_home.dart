@@ -18,156 +18,6 @@ class ElderlyHome extends StatefulWidget {
   State<ElderlyHome> createState() => _ElderlyHomeState();
 }
 
-class CaregiverSearchDelegate extends SearchDelegate {
-  final Function(String) onConnect;
-  final String currentUserId;
-
-  CaregiverSearchDelegate({
-    required this.onConnect,
-    required this.currentUserId,
-  });
-
-  @override
-  String get searchFieldLabel => "Search caregiver";
-
-  @override
-  List<Widget>? buildActions(BuildContext context) {
-    return [
-      IconButton(
-        icon: const Icon(Icons.clear),
-        onPressed: () {
-          query = "";
-          showSuggestions(context);
-        },
-      )
-    ];
-  }
-
-  @override
-  Widget? buildLeading(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.arrow_back),
-      onPressed: () => close(context, null),
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> searchCaregivers(String query) async {
-    query = query.toLowerCase();
-
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection("users")
-        .where("role", isEqualTo: "caregiver")
-        .get();
-
-    // Get existing connections
-    final existingConnections = await FirebaseFirestore.instance
-        .collection("connections")
-        .where("elderlyId", isEqualTo: currentUserId)
-        .get();
-
-    final connectedIds = existingConnections.docs
-        .map((doc) => doc['caregiverId'] as String)
-        .toSet();
-    final pendingIds = existingConnections.docs
-        .where((doc) => doc['status'] == 'pending')
-        .map((doc) => doc['caregiverId'] as String)
-        .toSet();
-
-    return snapshot.docs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final caregiverId = data["uid"] ?? doc.id;
-
-      // Skip already connected or pending caregivers
-      if (connectedIds.contains(caregiverId) ||
-          pendingIds.contains(caregiverId)) {
-        return false;
-      }
-
-      String username = (data["username"] ?? "").toLowerCase();
-      String fullName = (data["fullName"] ?? "").toLowerCase();
-      String email = (data["email"] ?? "").toLowerCase();
-
-      return username.contains(query) ||
-          fullName.contains(query) ||
-          email.contains(query);
-    }).map((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-
-      return {
-        "uid": data["uid"] ?? doc.id,
-        "username": data["username"] ?? "",
-        "fullName": data["fullName"] ?? "",
-        "profileImageUrl": data["profileImageUrl"] ?? "",
-      };
-    }).toList();
-  }
-
-  @override
-  Widget buildResults(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: searchCaregivers(query),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final results = snapshot.data!;
-
-        if (results.isEmpty) {
-          return const Center(child: Text("No caregivers found"));
-        }
-
-        return ListView.builder(
-          itemCount: results.length,
-          itemBuilder: (context, index) {
-            final user = results[index];
-
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: user["profileImageUrl"].isNotEmpty
-                      ? NetworkImage(user["profileImageUrl"])
-                      : null,
-                  child: user["profileImageUrl"].isEmpty
-                      ? Text(user["fullName"][0].toUpperCase())
-                      : null,
-                ),
-                title: Text(user["fullName"]),
-                subtitle: Text("@${user["username"]}"),
-                trailing: ElevatedButton(
-                  onPressed: () {
-                    close(context, null);
-                    onConnect(user["uid"]);
-                  },
-                  child: const Text("Connect"),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text("Search by name, username or email"),
-          SizedBox(height: 8),
-          Text("Find caregivers to connect with",
-              style: TextStyle(color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-}
-
 class _ElderlyHomeState extends State<ElderlyHome> {
   final ConnectionService _connectionService = ConnectionService();
   final AuthService _authService = AuthService();
@@ -179,62 +29,71 @@ class _ElderlyHomeState extends State<ElderlyHome> {
   bool isLoading = true;
   int _unreadMessages = 0;
   int _unreadAlerts = 0;
-  String? connectedCaregiverId;
-  Map<String, dynamic>? connectedCaregiver;
+  List<Map<String, dynamic>> _connectedCaregivers = [];
+  Map<String, dynamic>? _selectedCaregiver;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
-    _loadConnectedCaregiver();
+    _loadConnectedCaregivers();
     _loadUnreadCounts();
   }
 
   Future<void> _loadUserData() async {
+    setState(() => isLoading = true);
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final data = await _authService.getUserData(user.uid);
-      if (mounted) {
-        setState(() {
-          userData = data;
-          isLoading = false;
-        });
+      try {
+        final data = await _authService.getUserData(user.uid);
+        if (mounted) {
+          setState(() {
+            userData = data;
+            isLoading = false;
+            _errorMessage = null;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+            _errorMessage = "Failed to load user data: $e";
+          });
+        }
       }
     } else {
       if (mounted) {
         setState(() {
           isLoading = false;
+          _errorMessage = "Not logged in";
         });
       }
     }
   }
 
-  Future<void> _loadConnectedCaregiver() async {
+  Future<void> _loadConnectedCaregivers() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final connections = await FirebaseFirestore.instance
-        .collection("connections")
-        .where("elderlyId", isEqualTo: user.uid)
-        .where("status", isEqualTo: "accepted")
-        .limit(1)
-        .get();
-
-    if (connections.docs.isNotEmpty && mounted) {
-      final caregiverId = connections.docs.first["caregiverId"];
-      setState(() {
-        connectedCaregiverId = caregiverId;
+    try {
+      _connectionService.getElderlyConnections(user.uid).listen((caregivers) {
+        if (mounted) {
+          setState(() {
+            _connectedCaregivers = caregivers;
+            if (_selectedCaregiver == null && caregivers.isNotEmpty) {
+              _selectedCaregiver = caregivers.firstWhere(
+                (c) => c['isPrimary'] == true,
+                orElse: () => caregivers.first,
+              );
+            }
+          });
+        }
       });
-
-      // Load caregiver data
-      final caregiverDoc = await FirebaseFirestore.instance
-          .collection("users")
-          .doc(caregiverId)
-          .get();
-
-      if (caregiverDoc.exists && mounted) {
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          connectedCaregiver = caregiverDoc.data() as Map<String, dynamic>;
+          _errorMessage = "Failed to load caregivers: $e";
         });
       }
     }
@@ -258,16 +117,55 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     });
   }
 
-  Future<void> sendCheckIn() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  void _selectCaregiver(Map<String, dynamic> caregiver) {
+    setState(() {
+      _selectedCaregiver = caregiver;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Switched to ${caregiver['caregiverData']['fullName']}"),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
 
-    if (connectedCaregiverId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No caregiver connected ❗")),
-        );
-      }
+  void _navigateToChat() {
+    if (_selectedCaregiver == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No caregiver selected")),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          otherUserId: _selectedCaregiver!['caregiverId'],
+          otherUserName:
+              _selectedCaregiver!['caregiverData']['fullName'] ?? 'Caregiver',
+          otherUserImage:
+              _selectedCaregiver!['caregiverData']['profileImageUrl'] ?? '',
+        ),
+      ),
+    );
+  }
+
+  void _navigateToAlerts() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AlertsScreen(),
+      ),
+    );
+  }
+
+  Future<void> _sendCheckIn() async {
+    if (_selectedCaregiver == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No caregiver selected")),
+      );
       return;
     }
 
@@ -328,7 +226,6 @@ class _ElderlyHomeState extends State<ElderlyHome> {
 
     if (selectedStatus == null) return;
 
-    // Show additional info dialog for non-emergency
     if (selectedStatus != CheckInStatus.emergency) {
       await showDialog(
         context: context,
@@ -383,7 +280,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
 
     try {
       await _checkinService.sendCheckIn(
-        caregiverId: connectedCaregiverId!,
+        caregiverId: _selectedCaregiver!['caregiverId'],
         status: selectedStatus!,
         notes: notes.isNotEmpty ? notes : null,
         moodRating: moodRating,
@@ -401,9 +298,8 @@ class _ElderlyHomeState extends State<ElderlyHome> {
         message = "EMERGENCY! Caregiver has been alerted 🚨";
         color = Colors.red;
 
-        // Also send an alert for emergency
         await _alertService.sendAlert(
-          receiverId: connectedCaregiverId!,
+          receiverId: _selectedCaregiver!['caregiverId'],
           title: "EMERGENCY ALERT",
           message: "Emergency check-in triggered by elderly user",
           priority: AlertPriority.emergency,
@@ -437,8 +333,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color:
-                  color.withValues(alpha: 0.1), // Fixed deprecated withOpacity
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 32, color: color),
@@ -475,35 +370,6 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     }
   }
 
-  void _navigateToChat() {
-    if (connectedCaregiverId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No caregiver connected yet")),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatScreen(
-          otherUserId: connectedCaregiverId!,
-          otherUserName: connectedCaregiver?['fullName'] ?? 'Caregiver',
-          otherUserImage: connectedCaregiver?['profileImageUrl'] ?? '',
-        ),
-      ),
-    );
-  }
-
-  void _navigateToAlerts() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AlertsScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -511,6 +377,30 @@ class _ElderlyHomeState extends State<ElderlyHome> {
     if (user == null) {
       return const Scaffold(
         body: Center(child: Text("Not logged in")),
+      );
+    }
+
+    if (_errorMessage != null && isLoading == false) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Elderly Dashboard")),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(_errorMessage!),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  _loadUserData();
+                  _loadConnectedCaregivers();
+                },
+                child: const Text("Retry"),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -534,6 +424,65 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                 ],
               ),
         actions: [
+          // Caregiver selector dropdown
+          if (_connectedCaregivers.length > 1)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedCaregiver?['caregiverId'],
+                  icon: const Icon(Icons.swap_horiz, color: Colors.white),
+                  dropdownColor: Colors.white,
+                  onChanged: (String? newValue) {
+                    final newCaregiver = _connectedCaregivers.firstWhere(
+                      (c) => c['caregiverId'] == newValue,
+                    );
+                    _selectCaregiver(newCaregiver);
+                  },
+                  items: _connectedCaregivers.map((caregiver) {
+                    return DropdownMenuItem<String>(
+                      value: caregiver['caregiverId'],
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundImage: caregiver['caregiverData']
+                                            ['profileImageUrl']
+                                        ?.isNotEmpty ==
+                                    true
+                                ? NetworkImage(caregiver['caregiverData']
+                                    ['profileImageUrl'])
+                                : null,
+                            child: caregiver['caregiverData']['profileImageUrl']
+                                        ?.isEmpty !=
+                                    false
+                                ? Text(
+                                    caregiver['caregiverData']['fullName'][0]
+                                        .toUpperCase(),
+                                    style: const TextStyle(fontSize: 10))
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(caregiver['caregiverData']['fullName'] ??
+                              'Caregiver'),
+                          if (caregiver['isPrimary'] == true) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.star,
+                                size: 14, color: Colors.amber),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
           // Chat button with badge
           Stack(
             children: [
@@ -602,20 +551,6 @@ class _ElderlyHomeState extends State<ElderlyHome> {
             ],
           ),
 
-          // Search button
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              showSearch(
-                context: context,
-                delegate: CaregiverSearchDelegate(
-                  onConnect: sendRequest,
-                  currentUserId: user.uid,
-                ),
-              );
-            },
-          ),
-
           // Profile button
           IconButton(
             icon: const Icon(Icons.person),
@@ -631,7 +566,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
       body: RefreshIndicator(
         onRefresh: () async {
           await _loadUserData();
-          await _loadConnectedCaregiver();
+          await _loadConnectedCaregivers();
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -665,7 +600,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        if (connectedCaregiver != null)
+                        if (_selectedCaregiver != null)
                           Container(
                             margin: const EdgeInsets.only(top: 8),
                             padding: const EdgeInsets.symmetric(
@@ -681,10 +616,24 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                                     size: 16, color: Colors.green),
                                 const SizedBox(width: 4),
                                 Text(
-                                  "Connected to: ${connectedCaregiver!['fullName']}",
+                                  "Active: ${_selectedCaregiver!['caregiverData']['fullName']}",
                                   style: const TextStyle(fontSize: 12),
                                 ),
                               ],
+                            ),
+                          ),
+                        if (_connectedCaregivers.length > 1)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              "${_connectedCaregivers.length} Caregivers Connected",
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                       ],
@@ -718,7 +667,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                             icon: Icons.favorite,
                             label: "Check-in",
                             color: Colors.red,
-                            onTap: sendCheckIn,
+                            onTap: _sendCheckIn,
                           ),
                           _buildQuickAction(
                             icon: Icons.chat,
@@ -741,8 +690,83 @@ class _ElderlyHomeState extends State<ElderlyHome> {
 
               const SizedBox(height: 16),
 
-              // Connection Status
-              if (connectedCaregiver == null)
+              // Connected Caregivers List
+              if (_connectedCaregivers.isNotEmpty)
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Your Caregivers",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ..._connectedCaregivers.map((caregiver) {
+                          final data = caregiver['caregiverData'];
+                          final isSelected =
+                              _selectedCaregiver?['caregiverId'] ==
+                                  caregiver['caregiverId'];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            color: isSelected ? Colors.blue.shade50 : null,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage:
+                                    data['profileImageUrl']?.isNotEmpty == true
+                                        ? NetworkImage(data['profileImageUrl'])
+                                        : null,
+                                child: data['profileImageUrl']?.isEmpty != false
+                                    ? Text(data['fullName'][0].toUpperCase())
+                                    : null,
+                              ),
+                              title: Text(
+                                data['fullName'] ?? 'Caregiver',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              subtitle:
+                                  Text('@${data['username'] ?? 'unknown'}'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (caregiver['isPrimary'] == true)
+                                    const Chip(
+                                      label: Text('Primary'),
+                                      backgroundColor: Colors.green,
+                                      labelStyle: TextStyle(
+                                          color: Colors.white, fontSize: 10),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  if (!isSelected)
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          _selectCaregiver(caregiver),
+                                      child: const Text("Switch"),
+                                    ),
+                                  if (isSelected)
+                                    const Icon(Icons.check_circle,
+                                        color: Colors.green),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // No Caregivers Connected State
+              if (_connectedCaregivers.isEmpty)
                 Card(
                   color: Colors.orange.shade50,
                   shape: RoundedRectangleBorder(
@@ -756,7 +780,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                             size: 48, color: Colors.orange),
                         const SizedBox(height: 8),
                         const Text(
-                          "No Caregiver Connected",
+                          "No Caregivers Connected",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -764,7 +788,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          "Use the search icon to find and connect with a caregiver",
+                          "Use the search icon to find and connect with caregivers",
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey),
                         ),
@@ -776,6 +800,9 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                               delegate: CaregiverSearchDelegate(
                                 onConnect: sendRequest,
                                 currentUserId: user.uid,
+                                existingCaregiverIds: _connectedCaregivers
+                                    .map((c) => c['caregiverId'] as String)
+                                    .toList(),
                               ),
                             );
                           },
@@ -809,8 +836,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withValues(
-                    alpha: 0.1), // Fixed deprecated withOpacity
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 28, color: color),
@@ -820,6 +846,193 @@ class _ElderlyHomeState extends State<ElderlyHome> {
                 style: TextStyle(color: color, fontWeight: FontWeight.w500)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Search Delegate for Caregiver Search
+class CaregiverSearchDelegate extends SearchDelegate {
+  final Function(String) onConnect;
+  final String currentUserId;
+  final List<String> existingCaregiverIds;
+
+  CaregiverSearchDelegate({
+    required this.onConnect,
+    required this.currentUserId,
+    required this.existingCaregiverIds,
+  });
+
+  @override
+  String get searchFieldLabel => "Search caregiver";
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = "";
+          showSuggestions(context);
+        },
+      )
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> searchCaregivers(String query) async {
+    query = query.toLowerCase();
+
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection("users")
+        .where("role", isEqualTo: "caregiver")
+        .get();
+
+    return snapshot.docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final caregiverId = data["uid"] ?? doc.id;
+
+      if (existingCaregiverIds.contains(caregiverId)) {
+        return false;
+      }
+
+      String username = (data["username"] ?? "").toLowerCase();
+      String fullName = (data["fullName"] ?? "").toLowerCase();
+      String email = (data["email"] ?? "").toLowerCase();
+
+      return username.contains(query) ||
+          fullName.contains(query) ||
+          email.contains(query);
+    }).map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      return {
+        "uid": data["uid"] ?? doc.id,
+        "username": data["username"] ?? "",
+        "fullName": data["fullName"] ?? "",
+        "profileImageUrl": data["profileImageUrl"] ?? "",
+      };
+    }).toList();
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: searchCaregivers(query),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text("Error: ${snapshot.error}"),
+                ElevatedButton(
+                  onPressed: () => showResults(context),
+                  child: const Text("Retry"),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final results = snapshot.data!;
+
+        if (results.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.search_off, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text("No caregivers found"),
+                SizedBox(height: 8),
+                Text("Try a different search term"),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: results.length,
+          itemBuilder: (context, index) {
+            final user = results[index];
+
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                leading: CircleAvatar(
+                  radius: 25,
+                  backgroundImage: user["profileImageUrl"].isNotEmpty
+                      ? NetworkImage(user["profileImageUrl"])
+                      : null,
+                  child: user["profileImageUrl"].isEmpty
+                      ? Text(
+                          user["fullName"][0].toUpperCase(),
+                          style: const TextStyle(fontSize: 20),
+                        )
+                      : null,
+                ),
+                title: Text(
+                  user["fullName"],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text("@${user["username"]}"),
+                trailing: ElevatedButton.icon(
+                  onPressed: () {
+                    close(context, null);
+                    onConnect(user["uid"]);
+                  },
+                  icon: const Icon(Icons.person_add, size: 18),
+                  label: const Text("Connect"),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            "Search by name, username or email",
+            style: TextStyle(fontSize: 16),
+          ),
+          SizedBox(height: 8),
+          Text(
+            "Find caregivers to connect with",
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
       ),
     );
   }

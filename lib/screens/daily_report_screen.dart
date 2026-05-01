@@ -24,9 +24,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = true;
   Map<String, dynamic> _reportData = {};
-  List<QueryDocumentSnapshot> _checkins = [];
-  List<QueryDocumentSnapshot> _alerts = [];
-  List<QueryDocumentSnapshot> _reminders = [];
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _checkins = [];
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _alerts = [];
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _reminders = [];
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -35,10 +36,16 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   }
 
   Future<void> _loadReportData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    final startOfDay =
-        DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final startOfDay = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
     try {
@@ -73,17 +80,36 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       final stats = await _checkinService.getCheckInStats(widget.elderlyId);
       _reportData = stats;
     } catch (e) {
-      print('Error loading report data: $e');
+      debugPrint('Error loading report data: $e');
+      setState(() {
+        _errorMessage = 'Failed to load report data: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-
-    setState(() => _isLoading = false);
   }
 
-  Future<void> _exportReport() async {
-    // Implement PDF export
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Export functionality coming soon!')),
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2024, 1, 1),
+      lastDate: DateTime.now(),
+      helpText: 'Select Report Date',
+      cancelText: 'Cancel',
+      confirmText: 'OK',
+      fieldHintText: 'MM/DD/YYYY',
+      fieldLabelText: 'Date',
     );
+
+    if (picked != null && picked != _selectedDate && mounted) {
+      setState(() {
+        _selectedDate = picked;
+      });
+      await _loadReportData();
+    }
   }
 
   @override
@@ -91,50 +117,99 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Daily Report - ${widget.elderlyName}'),
+        elevation: 2,
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            onPressed: _exportReport,
+            icon: const Icon(Icons.calendar_today),
+            onPressed: _selectDate,
+            tooltip: 'Select Date',
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadReportData,
+            tooltip: 'Refresh',
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading report data...'),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadReportData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        _buildDateSelector(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                _buildDateSelector(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _buildSummaryCard(),
-                        const SizedBox(height: 16),
-                        _buildCheckInsCard(),
-                        const SizedBox(height: 16),
-                        _buildAlertsCard(),
-                        const SizedBox(height: 16),
-                        _buildRemindersCard(),
-                        const SizedBox(height: 16),
-                        _buildRecommendationsCard(),
-                      ],
-                    ),
-                  ),
-                ),
+                _buildSummaryCard(),
+                const SizedBox(height: 16),
+                _buildCheckInsCard(),
+                const SizedBox(height: 16),
+                _buildAlertsCard(),
+                const SizedBox(height: 16),
+                _buildRemindersCard(),
+                const SizedBox(height: 16),
+                _buildRecommendationsCard(),
               ],
             ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildDateSelector() {
+    final isToday = _selectedDate.year == DateTime.now().year &&
+        _selectedDate.month == DateTime.now().month &&
+        _selectedDate.day == DateTime.now().day;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.2),
             blurRadius: 5,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -146,33 +221,73 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
             onPressed: () {
               setState(() {
                 _selectedDate = _selectedDate.subtract(const Duration(days: 1));
-                _loadReportData();
               });
+              _loadReportData();
             },
+            tooltip: 'Previous Day',
           ),
-          Column(
-            children: [
-              Text(
-                DateFormat('EEEE').format(_selectedDate),
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          InkWell(
+            onTap: _selectDate,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
               ),
-              Text(
-                DateFormat('MMM d, yyyy').format(_selectedDate),
-                style: const TextStyle(color: Colors.grey),
+              child: Column(
+                children: [
+                  Text(
+                    DateFormat('EEEE').format(_selectedDate),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('MMM d, yyyy').format(_selectedDate),
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  if (isToday)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Today',
+                        style: TextStyle(fontSize: 10, color: Colors.blue),
+                      ),
+                    ),
+                ],
               ),
-            ],
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
             onPressed: () {
-              if (_selectedDate.isBefore(DateTime.now())) {
+              final nextDay = _selectedDate.add(const Duration(days: 1));
+              final today = DateTime.now();
+              final isNextDayValid = nextDay.isBefore(today) ||
+                  (nextDay.year == today.year &&
+                      nextDay.month == today.month &&
+                      nextDay.day == today.day);
+
+              if (isNextDayValid) {
                 setState(() {
-                  _selectedDate = _selectedDate.add(const Duration(days: 1));
-                  _loadReportData();
+                  _selectedDate = nextDay;
                 });
+                _loadReportData();
               }
             },
+            tooltip: 'Next Day',
           ),
         ],
       ),
@@ -180,11 +295,15 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   }
 
   Widget _buildSummaryCard() {
-    final okCount = _checkins.where((doc) => doc['status'] == 'ok').length;
-    final needHelpCount =
-        _checkins.where((doc) => doc['status'] == 'needHelp').length;
-    final emergencyCount =
-        _checkins.where((doc) => doc['status'] == 'emergency').length;
+    final okCount = _checkins
+        .where((doc) => (doc.data()['status'] as String?) == 'ok')
+        .length;
+    final needHelpCount = _checkins
+        .where((doc) => (doc.data()['status'] as String?) == 'needHelp')
+        .length;
+    final emergencyCount = _checkins
+        .where((doc) => (doc.data()['status'] as String?) == 'emergency')
+        .length;
 
     return Card(
       elevation: 4,
@@ -215,7 +334,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                   color: Colors.orange,
                 ),
                 _buildStatItem(
-                  icon: Icons.notifications, // Changed from Icons.reminder
+                  icon: Icons.notifications,
                   label: 'Reminders',
                   value: _reminders.length.toString(),
                   color: Colors.blue,
@@ -245,7 +364,14 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   }) {
     return Column(
       children: [
-        Icon(icon, size: 32, color: color),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 28, color: color),
+        ),
         const SizedBox(height: 8),
         Text(
           value,
@@ -265,7 +391,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         Text(
           count.toString(),
           style: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.bold, color: color),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
         Text(
           label,
@@ -283,7 +412,17 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         child: const Padding(
           padding: EdgeInsets.all(32),
           child: Center(
-            child: Text('No check-ins recorded for this day'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.favorite_border, size: 48, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No check-ins recorded for this day',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -307,48 +446,77 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _checkins.length,
               itemBuilder: (context, index) {
-                final checkin = _checkins[index].data() as Map<String, dynamic>;
-                final timestamp =
-                    (checkin['timestamp'] as Timestamp?)?.toDate();
-                final status = checkin['status'] ?? 'ok';
+                final checkinData = _checkins[index].data();
+                final timestamp = checkinData['timestamp'] as Timestamp?;
+                final status = checkinData['status'] as String? ?? 'ok';
+                final notes = checkinData['notes'] as String? ?? '';
+                final moodRating = checkinData['moodRating'] as double? ?? 3.0;
 
-                return ListTile(
-                  leading: Icon(
-                    status == 'ok'
-                        ? Icons.check_circle
-                        : status == 'needHelp'
-                            ? Icons.warning
-                            : Icons.emergency,
-                    color: status == 'ok'
-                        ? Colors.green
-                        : status == 'needHelp'
-                            ? Colors.orange
-                            : Colors.red,
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: status == 'ok'
+                            ? Colors.green.withOpacity(0.1)
+                            : status == 'needHelp'
+                                ? Colors.orange.withOpacity(0.1)
+                                : Colors.red.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        status == 'ok'
+                            ? Icons.check_circle
+                            : status == 'needHelp'
+                                ? Icons.warning
+                                : Icons.emergency,
+                        color: status == 'ok'
+                            ? Colors.green
+                            : status == 'needHelp'
+                                ? Colors.orange
+                                : Colors.red,
+                        size: 24,
+                      ),
+                    ),
+                    title: Text(
+                      status == 'ok'
+                          ? 'Feeling OK'
+                          : status == 'needHelp'
+                              ? 'Needs Assistance'
+                              : 'Emergency!',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          timestamp != null
+                              ? DateFormat('h:mm a').format(timestamp.toDate())
+                              : 'Time unknown',
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        if (notes.isNotEmpty)
+                          Text(
+                            notes,
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey[500]),
+                          ),
+                      ],
+                    ),
+                    trailing: moodRating != 3.0
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star,
+                                  color: Colors.amber, size: 16),
+                              const SizedBox(width: 4),
+                              Text('${moodRating.round()}/5'),
+                            ],
+                          )
+                        : null,
                   ),
-                  title: Text(
-                    status == 'ok'
-                        ? 'Feeling OK'
-                        : status == 'needHelp'
-                            ? 'Needs Assistance'
-                            : 'Emergency!',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  subtitle: Text(
-                    timestamp != null
-                        ? DateFormat('h:mm a').format(timestamp)
-                        : 'Time unknown',
-                  ),
-                  trailing: checkin['moodRating'] != null
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star,
-                                color: Colors.amber, size: 16),
-                            const SizedBox(width: 4),
-                            Text('${checkin['moodRating']}/5'),
-                          ],
-                        )
-                      : null,
                 );
               },
             ),
@@ -366,7 +534,17 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         child: const Padding(
           padding: EdgeInsets.all(32),
           child: Center(
-            child: Text('No alerts sent on this day'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.notifications_off, size: 48, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No alerts sent on this day',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -390,45 +568,47 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _alerts.length,
               itemBuilder: (context, index) {
-                final alert = _alerts[index].data() as Map<String, dynamic>;
-                final timestamp = (alert['timestamp'] as Timestamp?)?.toDate();
-                final priority = alert['priority'] ?? 'medium';
+                final alertData = _alerts[index].data();
+                final timestamp = alertData['timestamp'] as Timestamp?;
+                final priority = alertData['priority'] as String? ?? 'medium';
+                final title = alertData['title'] as String? ?? 'Alert';
+                final message = alertData['message'] as String? ?? '';
 
-                return ListTile(
-                  leading: Icon(
-                    priority == 'low'
-                        ? Icons.info_outline
-                        : priority == 'medium'
-                            ? Icons.warning_amber_outlined
-                            : priority == 'high'
-                                ? Icons.warning
-                                : Icons.emergency,
-                    color: priority == 'low'
-                        ? Colors.blue
-                        : priority == 'medium'
-                            ? Colors.orange
-                            : priority == 'high'
-                                ? Colors.red
-                                : Colors.deepOrange,
-                  ),
-                  title: Text(
-                    alert['title'] ?? 'Alert',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(alert['message'] ?? ''),
-                      const SizedBox(height: 4),
-                      Text(
-                        timestamp != null
-                            ? DateFormat('h:mm a').format(timestamp)
-                            : 'Time unknown',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _getAlertColor(priority).withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
-                    ],
+                      child: Icon(
+                        _getAlertIcon(priority),
+                        color: _getAlertColor(priority),
+                        size: 24,
+                      ),
+                    ),
+                    title: Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(message),
+                        const SizedBox(height: 4),
+                        Text(
+                          timestamp != null
+                              ? DateFormat('h:mm a').format(timestamp.toDate())
+                              : 'Time unknown',
+                          style:
+                              TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    isThreeLine: true,
                   ),
-                  isThreeLine: true,
                 );
               },
             ),
@@ -446,7 +626,17 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         child: const Padding(
           padding: EdgeInsets.all(32),
           child: Center(
-            child: Text('No reminders scheduled for this day'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.notifications_none, size: 48, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No reminders scheduled for this day',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -470,48 +660,62 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _reminders.length,
               itemBuilder: (context, index) {
-                final reminder =
-                    _reminders[index].data() as Map<String, dynamic>;
-                final timestamp =
-                    (reminder['timestamp'] as Timestamp?)?.toDate();
-                final isCompleted = reminder['isCompleted'] ?? false;
-                final type = reminder['type'] ?? 'general';
+                final reminderData = _reminders[index].data();
+                final timestamp = reminderData['timestamp'] as Timestamp?;
+                final isCompleted =
+                    reminderData['isCompleted'] as bool? ?? false;
+                final type = reminderData['type'] as String? ?? 'general';
+                final message =
+                    reminderData['message'] as String? ?? 'Reminder';
 
-                return ListTile(
-                  leading: Icon(
-                    type == 'medication'
-                        ? Icons.medication
-                        : type == 'wellness'
-                            ? Icons.health_and_safety
-                            : Icons.notifications,
-                    color: isCompleted ? Colors.green : Colors.orange,
-                  ),
-                  title: Text(
-                    reminder['message'] ?? 'Reminder',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      decoration:
-                          isCompleted ? TextDecoration.lineThrough : null,
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isCompleted
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.orange.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        type == 'medication'
+                            ? Icons.medication
+                            : type == 'wellness'
+                                ? Icons.health_and_safety
+                                : Icons.notifications,
+                        color: isCompleted ? Colors.green : Colors.orange,
+                        size: 24,
+                      ),
                     ),
+                    title: Text(
+                      message,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        decoration:
+                            isCompleted ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    subtitle: Text(
+                      timestamp != null
+                          ? DateFormat('h:mm a').format(timestamp.toDate())
+                          : 'Time unknown',
+                    ),
+                    trailing: isCompleted
+                        ? const Chip(
+                            label: Text('Completed'),
+                            backgroundColor: Colors.green,
+                            labelStyle:
+                                TextStyle(color: Colors.white, fontSize: 10),
+                          )
+                        : const Chip(
+                            label: Text('Pending'),
+                            backgroundColor: Colors.orange,
+                            labelStyle:
+                                TextStyle(color: Colors.white, fontSize: 10),
+                          ),
                   ),
-                  subtitle: Text(
-                    timestamp != null
-                        ? DateFormat('h:mm a').format(timestamp)
-                        : 'Time unknown',
-                  ),
-                  trailing: isCompleted
-                      ? const Chip(
-                          label: Text('Completed'),
-                          backgroundColor: Colors.green,
-                          labelStyle:
-                              TextStyle(color: Colors.white, fontSize: 10),
-                        )
-                      : const Chip(
-                          label: Text('Pending'),
-                          backgroundColor: Colors.orange,
-                          labelStyle:
-                              TextStyle(color: Colors.white, fontSize: 10),
-                        ),
                 );
               },
             ),
@@ -522,25 +726,34 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   }
 
   Widget _buildRecommendationsCard() {
-    final okRate = _reportData['okRate'] ?? 0;
-    final needHelpRate = _reportData['needHelpRate'] ?? 0;
-    final averageMood = _reportData['averageMood'] ?? 3;
+    final okRate = (_reportData['okRate'] as num?)?.toDouble() ?? 0.0;
+    final needHelpRate =
+        (_reportData['needHelpRate'] as num?)?.toDouble() ?? 0.0;
+    final averageMood = (_reportData['averageMood'] as num?)?.toDouble() ?? 3.0;
 
     List<String> recommendations = [];
 
     if (needHelpRate > 0.3) {
       recommendations.add(
-          '• High rate of assistance needed - consider increasing check-in frequency');
+        '• High rate of assistance needed (${(needHelpRate * 100).toInt()}%) - consider increasing check-in frequency',
+      );
     }
 
     if (averageMood < 2.5) {
       recommendations.add(
-          '• Low mood rating detected - consider wellness activities or counseling');
+        '• Low mood rating detected (${averageMood.round()}/5) - consider wellness activities or counseling',
+      );
     }
 
     if (_alerts.length > 3) {
       recommendations.add(
-          '• Multiple alerts sent - review alert patterns and address underlying issues');
+        '• Multiple alerts sent (${_alerts.length}) - review alert patterns and address underlying issues',
+      );
+    }
+
+    if (_checkins.isEmpty) {
+      recommendations
+          .add('• No check-ins recorded today - encourage regular check-ins');
     }
 
     if (recommendations.isEmpty) {
@@ -574,11 +787,44 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
             const SizedBox(height: 12),
             ...recommendations.map((rec) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(rec, style: const TextStyle(height: 1.5)),
+                  child: Text(
+                    rec,
+                    style: const TextStyle(height: 1.5),
+                  ),
                 )),
           ],
         ),
       ),
     );
+  }
+
+  IconData _getAlertIcon(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'low':
+        return Icons.info_outline;
+      case 'medium':
+        return Icons.warning_amber_outlined;
+      case 'high':
+        return Icons.warning;
+      case 'emergency':
+        return Icons.emergency;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getAlertColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'low':
+        return Colors.blue;
+      case 'medium':
+        return Colors.orange;
+      case 'high':
+        return Colors.red;
+      case 'emergency':
+        return Colors.deepOrange;
+      default:
+        return Colors.grey;
+    }
   }
 }
