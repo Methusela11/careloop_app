@@ -1079,7 +1079,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
       await FirebaseFirestore.instance.collection("reminders").add({
         "elderlyId": elderlyId,
         "caregiverId": user!.uid,
-        "message": "Don't forget to take your medication! 💊",
+        "message": "Don't forget to take your medicine! 💊",
         "timestamp": FieldValue.serverTimestamp(),
         "isCompleted": false,
         "type": "medication",
