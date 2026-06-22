@@ -300,7 +300,7 @@ class _ElderlyHomeState extends State<ElderlyHome> {
 
         await _alertService.sendAlert(
           receiverId: _selectedCaregiver!['caregiverId'],
-          title: "EMERGENCY ALERT",
+          title: "EMERGENCY ALERT!!",
           message: "Emergency check-in triggered by elderly user",
           priority: AlertPriority.emergency,
         );
