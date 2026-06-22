@@ -1194,7 +1194,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
           children: [
             Icon(Icons.favorite, size: 64, color: Colors.red),
             SizedBox(height: 16),
-            Text("Health data tracking coming soon!"),
+            Text("Health data tracking coming soon!!"),
             SizedBox(height: 8),
             Text(
                 "This feature will include vital signs, medication tracking, and more."),
