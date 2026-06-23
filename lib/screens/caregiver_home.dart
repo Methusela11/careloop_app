@@ -835,7 +835,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
                             backgroundColor: Colors.orange,
                           )
                         : Chip(
-                            label: const Text("EMERGENCY",
+                            label: const Text("EMERGENCY!",
                                 style: TextStyle(color: Colors.white)),
                             backgroundColor: Colors.red,
                           ),
