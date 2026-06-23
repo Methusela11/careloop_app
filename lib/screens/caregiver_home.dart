@@ -830,7 +830,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
                       )
                     : status == "needHelp"
                         ? Chip(
-                            label: const Text("NEEDS HELP",
+                            label: const Text("NEEDS HELP.",
                                 style: TextStyle(color: Colors.white)),
                             backgroundColor: Colors.orange,
                           )
