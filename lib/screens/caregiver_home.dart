@@ -765,7 +765,7 @@ class _CaregiverHomeState extends State<CaregiverHome>
               children: [
                 Icon(Icons.favorite_border, size: 64, color: Colors.grey),
                 SizedBox(height: 16),
-                Text("No check-ins yet"),
+                Text("No check-ins yet."),
               ],
             ),
           );
